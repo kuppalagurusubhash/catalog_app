@@ -21,6 +21,14 @@ export const metadata = {
   keywords: 'Kadapa black stone, natural stone paving, 2x2 stone rates, 3x3 stone slabs, rough cleft limestone, polished black stone, Transport AI',
 };
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+  viewportFit: 'cover',
+  themeColor: '#081812',
+};
+
 export default function RootLayout({ children }) {
   return (
     <html lang="en" className={`${plusJakarta.variable} ${cinzel.variable}`}>

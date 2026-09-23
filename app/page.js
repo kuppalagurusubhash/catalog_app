@@ -842,6 +842,77 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      {/* 10. Mobile Bottom App Bar (iPhone 12 Pro Max & Mobile Screens) */}
+      <nav className="mobile-bottom-nav" aria-label="Mobile Navigation">
+        <button 
+          type="button" 
+          className="bottom-nav-item active"
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          aria-label="Home"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+          </svg>
+          <span>Home</span>
+        </button>
+
+        <button 
+          type="button" 
+          className="bottom-nav-item"
+          onClick={() => document.getElementById('catalog-section')?.scrollIntoView({ behavior: 'smooth' })}
+          aria-label="Catalog"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <rect x="3" y="3" width="7" height="7"/>
+            <rect x="14" y="3" width="7" height="7"/>
+            <rect x="14" y="14" width="7" height="7"/>
+            <rect x="3" y="14" width="7" height="7"/>
+          </svg>
+          <span>Catalog</span>
+        </button>
+
+        <button 
+          type="button" 
+          className="bottom-nav-item"
+          onClick={() => document.getElementById('trust-section')?.scrollIntoView({ behavior: 'smooth' })}
+          aria-label="About Us"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="16" x2="12" y2="12"/>
+            <line x1="12" y1="8" x2="12.01" y2="8"/>
+          </svg>
+          <span>About Us</span>
+        </button>
+
+        <button 
+          type="button" 
+          className="bottom-nav-item"
+          onClick={() => document.getElementById('calculator-section')?.scrollIntoView({ behavior: 'smooth' })}
+          aria-label="Transport"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <rect x="1" y="3" width="15" height="13"/>
+            <polygon points="16 8 20 8 23 11 23 16 16 16 8"/>
+            <circle cx="5.5" cy="18.5" r="2.5"/>
+            <circle cx="18.5" cy="18.5" r="2.5"/>
+          </svg>
+          <span>Transport</span>
+        </button>
+
+        <button 
+          type="button" 
+          className="bottom-nav-item"
+          onClick={() => handleWhatsAppOrder()}
+          aria-label="Contact"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+          </svg>
+          <span>Contact</span>
+        </button>
+      </nav>
     </>
   );
 }

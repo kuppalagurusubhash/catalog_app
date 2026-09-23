@@ -1249,7 +1249,67 @@ button, input, select {
 }
 
 /* ===================================================================
-   RESPONSIVE DESIGN
+   MOBILE BOTTOM NAVIGATION BAR (iPhone 12 Pro Max & Mobile)
+   =================================================================== */
+.mobile-bottom-nav {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  body {
+    padding-bottom: 74px;
+  }
+
+  .mobile-bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 62px;
+    background: #081812;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    align-items: center;
+    justify-content: space-around;
+    z-index: 999;
+    backdrop-filter: blur(16px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
+  }
+
+  .bottom-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    background: none;
+    border: none;
+    color: #94a3b8;
+    font-size: 0.65rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 6px 10px;
+    transition: color 0.2s ease;
+    flex: 1;
+  }
+
+  .bottom-nav-item:hover,
+  .bottom-nav-item.active {
+    color: #34d399;
+  }
+
+  .bottom-nav-item svg {
+    transition: transform 0.2s ease;
+  }
+
+  .bottom-nav-item.active svg {
+    transform: scale(1.1);
+  }
+}
+
+/* ===================================================================
+   RESPONSIVE DESIGN (Tablets & Mobile / iPhone 12 Pro Max)
    =================================================================== */
 @media (max-width: 1024px) {
   .stone-cards-grid {
@@ -1271,25 +1331,364 @@ button, input, select {
   .calculator-card {
     grid-template-columns: 1fr;
   }
-  .trust-bar-container {
-    grid-template-columns: repeat(2, 1fr);
-  }
 }
 
-@media (max-width: 640px) {
-  .stone-cards-grid {
-    grid-template-columns: 1fr;
+@media (max-width: 768px) {
+  .container {
+    padding: 0 14px;
   }
+
   .nav-links {
     display: none;
   }
+
+  .main-header {
+    padding: 10px 0;
+  }
+
+  .brand-icon-leaf {
+    width: 34px;
+    height: 34px;
+  }
+
+  .brand-title {
+    font-size: 0.95rem;
+  }
+
+  .brand-subtitle {
+    font-size: 0.52rem;
+  }
+
+  .btn-header-wa {
+    padding: 5px 12px;
+    font-size: 0.72rem;
+    gap: 6px;
+  }
+
+  .btn-header-wa .wa-number {
+    font-size: 0.7rem;
+  }
+
+  .cart-btn-wrap {
+    width: 34px;
+    height: 34px;
+  }
+
+  /* Hero on mobile */
+  .hero-section {
+    padding: 30px 0 40px;
+    background-position: center;
+  }
+
   .hero-title {
-    font-size: 2.1rem;
+    font-size: 1.85rem;
+    line-height: 1.2;
+    margin-bottom: 10px;
   }
+
+  .hero-malayalam {
+    font-size: 0.88rem;
+    line-height: 1.5;
+    margin-bottom: 20px;
+  }
+
+  .hero-features-bar {
+    display: flex;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 10px;
+    padding: 8px 14px;
+    max-width: 100%;
+    border-radius: 50px;
+    justify-content: flex-start;
+  }
+
+  .hero-features-bar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .feature-pill-item {
+    font-size: 0.68rem;
+    gap: 5px;
+    flex-shrink: 0;
+  }
+
+  .hero-photo-card.card-main {
+    width: 220px;
+  }
+
+  .hero-photo-card.card-secondary {
+    width: 180px;
+    left: -10px;
+    top: 15px;
+  }
+
+  .hero-photo-img {
+    height: 140px;
+  }
+
+  .hero-sticker-note {
+    max-width: 165px;
+    padding: 6px 10px;
+    bottom: -10px;
+    right: 5px;
+  }
+
+  .hero-sticker-text {
+    font-size: 0.72rem;
+  }
+
+  /* Category bar on mobile */
+  .categories-bar {
+    gap: 8px;
+    padding-bottom: 6px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .categories-bar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .category-item {
+    padding: 6px 12px 6px 8px;
+    border-radius: 10px;
+    flex-shrink: 0;
+  }
+
+  .cat-thumb, .cat-icon-grid {
+    width: 28px;
+    height: 28px;
+  }
+
+  .cat-name {
+    font-size: 0.75rem;
+  }
+
+  .cat-malayalam {
+    font-size: 0.62rem;
+  }
+
+  /* 2-Column Mobile Grid for iPhone 12 Pro Max */
+  .stone-cards-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .stone-card {
+    border-radius: 12px;
+  }
+
+  .stone-img-container {
+    height: 125px;
+  }
+
+  .badges-overlay {
+    top: 6px;
+    left: 6px;
+    gap: 3px;
+  }
+
+  .dim-pill {
+    font-size: 0.55rem;
+    padding: 2px 5px;
+  }
+
+  .finish-pill {
+    font-size: 0.55rem;
+    padding: 2px 5px;
+  }
+
+  .btn-wishlist {
+    top: 6px;
+    right: 6px;
+    width: 26px;
+    height: 26px;
+  }
+
+  .btn-wishlist svg {
+    width: 13px;
+    height: 13px;
+  }
+
+  .stone-card-body {
+    padding: 10px 8px;
+  }
+
+  .stone-card-title {
+    font-size: 0.8rem;
+    line-height: 1.25;
+  }
+
+  .stone-card-malayalam {
+    font-size: 0.7rem;
+  }
+
+  .price-row {
+    margin-bottom: 6px;
+    gap: 4px;
+  }
+
+  .stone-price {
+    font-size: 1.15rem;
+  }
+
+  .stone-unit {
+    font-size: 0.65rem;
+  }
+
+  .best-value-pill {
+    font-size: 0.55rem;
+    padding: 1px 4px;
+  }
+
+  .card-use-case {
+    font-size: 0.65rem;
+    line-height: 1.35;
+    min-height: 26px;
+    margin-bottom: 10px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .card-actions-row {
+    gap: 5px;
+  }
+
+  .btn-view-details {
+    padding: 6px 8px;
+    font-size: 0.68rem;
+    gap: 4px;
+    border-radius: 20px;
+  }
+
+  .btn-card-cart {
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+  }
+
+  .btn-card-cart svg {
+    width: 13px;
+    height: 13px;
+  }
+
+  /* Card 7 Quarry Promo Spans 2 Columns on Mobile */
+  .quarry-promo-card {
+    grid-column: span 2;
+    padding: 16px;
+    border-radius: 12px;
+  }
+
+  .promo-title-malayalam {
+    font-size: 1.1rem;
+    margin-bottom: 8px;
+  }
+
+  .promo-loc-pill {
+    font-size: 0.68rem;
+    padding: 3px 10px;
+  }
+
+  .catalog-header {
+    margin-bottom: 14px;
+    gap: 8px;
+  }
+
+  .catalog-heading {
+    font-size: 1.25rem;
+  }
+
+  .catalog-controls {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .catalog-controls > div {
+    flex: 1;
+    min-width: 140px;
+  }
+
+  /* Trust Bar on Mobile (4-column compact strip) */
   .trust-bar-container {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    padding: 10px 6px;
+    border-radius: 10px;
   }
-  .header-actions .wa-number {
+
+  .trust-item {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 4px;
+  }
+
+  .trust-icon-box {
+    width: 28px;
+    height: 28px;
+    margin: 0 auto;
+  }
+
+  .trust-icon-box svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .trust-text {
+    font-size: 0.58rem;
+    line-height: 1.2;
+  }
+
+  /* Lorry Load Calculator on Mobile */
+  .calculator-card {
+    padding: 20px 14px;
+    border-radius: 14px;
+    gap: 20px;
+  }
+
+  .calc-main-title {
+    font-size: 1.35rem;
+  }
+
+  .calc-malayalam-desc {
+    font-size: 0.78rem;
+    margin-bottom: 16px;
+  }
+
+  .calc-summary-panel {
+    padding: 16px;
+    border-radius: 12px;
+  }
+
+  .calc-price-big {
+    font-size: 1.7rem;
+  }
+
+  .calc-stats-grid {
+    gap: 8px;
+    padding: 12px 0;
+    margin-bottom: 14px;
+  }
+
+  .stat-number {
+    font-size: 0.84rem;
+  }
+
+  .btn-place-wa-order {
+    padding: 12px 16px;
+    font-size: 0.82rem;
+  }
+}
+
+@media (max-width: 420px) {
+  .btn-header-wa .wa-number {
     display: none;
   }
 }
