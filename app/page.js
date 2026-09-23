@@ -19,7 +19,8 @@ export default function Home() {
   const [selectedDistrictId, setSelectedDistrictId] = useState('Palakkad');
   
   // Interactive UI states
-  const [cartCount, setCartCount] = useState(0);
+  const [cart, setCart] = useState([]);
+  const [showCartModal, setShowCartModal] = useState(false);
   const [wishlist, setWishlist] = useState({});
   const [modalStone, setModalStone] = useState(null);
   const [showRatesModal, setShowRatesModal] = useState(false);
@@ -43,10 +44,101 @@ export default function Home() {
     });
   };
 
-  const handleAddToCart = (stone, e) => {
-    e.stopPropagation();
-    setCartCount((c) => c + 1);
-    showToast(`Added "${stone.name}" to cart`);
+  const handleAddToCart = (stone, customPieces = null, e = null) => {
+    if (e && e.stopPropagation) e.stopPropagation();
+    const defaultPieces = customPieces || (stone.slabArea === 9 ? 100 : 200);
+    setCart((prev) => {
+      const idx = prev.findIndex((item) => item.code === stone.code);
+      if (idx > -1) {
+        const next = [...prev];
+        next[idx] = { ...next[idx], pieces: next[idx].pieces + defaultPieces };
+        showToast(`Updated "${stone.name}" (+${defaultPieces} pcs) in cart`);
+        return next;
+      } else {
+        showToast(`Added "${stone.name}" (${defaultPieces} pcs) to cart`);
+        return [...prev, { ...stone, pieces: defaultPieces }];
+      }
+    });
+  };
+
+  const handleUpdateCartQty = (code, delta) => {
+    setCart((prev) =>
+      prev.map((item) => {
+        if (item.code === code) {
+          const newPieces = Math.max(25, item.pieces + delta);
+          return { ...item, pieces: newPieces };
+        }
+        return item;
+      })
+    );
+  };
+
+  const handleSetCartPieces = (code, val) => {
+    const parsed = Math.max(1, parseInt(val, 10) || 0);
+    setCart((prev) => prev.map((item) => (item.code === code ? { ...item, pieces: parsed } : item)));
+  };
+
+  const handleRemoveFromCart = (code) => {
+    setCart((prev) => prev.filter((item) => item.code !== code));
+    showToast('Removed stone from cart');
+  };
+
+  const handleClearCart = () => {
+    setCart([]);
+    showToast('Cart cleared');
+  };
+
+  // Cart aggregate totals
+  const cartTotalPieces = cart.reduce((sum, item) => sum + item.pieces, 0);
+  const cartTotalSqft = cart.reduce((sum, item) => sum + (item.pieces * item.slabArea), 0);
+  const cartTotalWeightTons = (cart.reduce((sum, item) => sum + (item.pieces * item.slabArea * item.weightPerSqftKg), 0) / 1000).toFixed(1);
+  const cartTotalCost = cart.reduce((sum, item) => {
+    const rate = getStoneRate(item.code, selectedDistrictId);
+    return sum + (item.pieces * item.slabArea * rate);
+  }, 0);
+
+  let cartLorryText = '10-Wheeler Lorry (Direct site delivery via Walayar/AP)';
+  if (cartTotalWeightTons <= 11) {
+    cartLorryText = '6-Wheeler Lorry (~10T - For narrow/interior Kerala roads)';
+  } else if (cartTotalWeightTons <= 24) {
+    cartLorryText = '10-Wheeler Lorry (Direct site delivery via Walayar/AP)';
+  } else {
+    cartLorryText = '12-Wheeler Heavy Multi-Axle (~30-35T direct site dispatch)';
+  }
+
+  const handleOrderCartWhatsApp = () => {
+    if (cart.length === 0) {
+      showToast('Your cart is empty. Add stones first!');
+      return;
+    }
+
+    const itemsLines = cart.map((item, idx) => {
+      const rate = getStoneRate(item.code, selectedDistrictId);
+      const itemSqft = item.pieces * item.slabArea;
+      const itemCost = itemSqft * rate;
+      return `${idx + 1}. ORDER ${item.size} ${item.thickness} ${item.finish} ${item.pieces} pcs (${itemSqft.toLocaleString()} sq.ft) @ ₹${rate}/sqft = ₹${Math.round(itemCost).toLocaleString()}`;
+    }).join('\n');
+
+    const msg =
+`*KADAPA BLACK STONE — CART CONSIGNMENT ORDER*
+━━━━━━━━━━━━━━━━━━━━━
+📍 *Delivery District:* ${currentDistrictObj.name}
+
+📦 *Consignment Breakdown (${cart.length} Varieties):*
+${itemsLines}
+
+━━━━━━━━━━━━━━━━━━━━━
+📊 *Consignment Totals:*
+• Total Slabs: ${cartTotalPieces.toLocaleString()} pcs
+• Total Area: ${Math.round(cartTotalSqft).toLocaleString()} sq.ft
+• Est. Consignment Weight: ~${cartTotalWeightTons} Tons
+• Recommended Vehicle: ${cartLorryText}
+💰 *Estimated Grand Total:* *₹${Math.round(cartTotalCost).toLocaleString()}*
+━━━━━━━━━━━━━━━━━━━━━
+
+Hello Transia Transport, I have created this consignment cart order on your catalog website. Please confirm availability and lorry loading schedule!`;
+
+    window.open(`https://wa.me/${OWNER_WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
   // Calculator logic using district rates
@@ -178,13 +270,13 @@ export default function Home() {
               </div>
             </a>
 
-            <div className="cart-btn-wrap" onClick={() => showToast(`You have ${cartCount} items in inquiry cart`)}>
+            <div className="cart-btn-wrap" onClick={() => setShowCartModal(true)} title="View Cart">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="8" cy="21" r="1"/>
                 <circle cx="19" cy="21" r="1"/>
                 <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>
               </svg>
-              <span className="cart-badge">{cartCount}</span>
+              <span className="cart-badge">{cart.length}</span>
             </div>
           </div>
         </div>
@@ -192,73 +284,75 @@ export default function Home() {
 
       {/* 2. Hero Section */}
       <section className="hero-section">
-        <div className="container hero-grid">
-          {/* Hero Left Content */}
-          <div>
-            <div className="hero-tag">PREMIUM QUALITY</div>
-            <h1 className="hero-title">
-              Kerala Stone Catalog <br />
-              &amp; Quarry Rates
-            </h1>
-            <p className="hero-malayalam">
-              കേരളത്തിലെ വീടുകൾക്ക് അനുയോജ്യമായ പ്രകൃതി കല്ലുകൾ നേരിട്ടു ക്വാറിയിൽ നിന്ന്.
-            </p>
+        <div className="container hero-container">
+          <div className="hero-top-row">
+            {/* Hero Left Content */}
+            <div className="hero-left-content">
+              <div className="hero-tag">PREMIUM QUALITY</div>
+              <h1 className="hero-title">
+                Kerala Stone Catalog <br />
+                &amp; Quarry Rates
+              </h1>
+              <p className="hero-malayalam">
+                കേരളത്തിന്റെ വീടുകൾക്ക് അനുയോജ്യമായ പ്രകൃതി കല്ലുകൾ നേരിട്ട് ക്വാറിയിൽ നിന്ന്.
+              </p>
+            </div>
 
-            {/* Trust Pill Bar */}
-            <div className="hero-features-bar">
-              <div className="feature-pill-item">
-                <span className="feat-icon">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
-                  </svg>
-                </span>
-                <span>100% Natural Stone</span>
+            {/* Hero Right Visuals (Layered Tilted Cards) */}
+            <div className="hero-visual-wrap">
+              <div className="hero-photo-card card-secondary">
+                <img src="/p1.jpeg" alt="Kadapa courtyard installation" className="hero-photo-img" />
               </div>
-              <div className="feat-divider" />
-              <div className="feature-pill-item">
-                <span className="feat-icon">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                    <rect x="1" y="3" width="15" height="13"/>
-                    <polygon points="16 8 20 8 23 11 23 16 16 16 8"/>
-                    <circle cx="5.5" cy="18.5" r="2.5"/>
-                    <circle cx="18.5" cy="18.5" r="2.5"/>
-                  </svg>
-                </span>
-                <span>Kerala Direct Supply</span>
-              </div>
-              <div className="feat-divider" />
-              <div className="feature-pill-item">
-                <span className="feat-icon">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                  </svg>
-                </span>
-                <span>Safe &amp; Secure Transport</span>
-              </div>
-              <div className="feat-divider" />
-              <div className="feature-pill-item">
-                <span className="feat-icon">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/>
-                  </svg>
-                </span>
-                <span>Best Price Guaranteed</span>
+              <div className="hero-photo-card card-main">
+                <img src="/s2.jpeg" alt="Calibrated Kadapa Stone" className="hero-photo-img" />
+                <div className="hero-sticker-note">
+                  <div className="hero-sticker-text">
+                    നിങ്ങളുടെ സ്വപ്ന ഭവനത്തിന് പ്രകൃതി കല്ലുകൾ...
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Hero Right Visuals (Layered Tilted Cards) */}
-          <div className="hero-visual-wrap">
-            <div className="hero-photo-card card-secondary">
-              <img src="/hero-stone-tiles.jpg" alt="Kadapa courtyard installation" className="hero-photo-img" />
+          {/* Trust Pill Bar - Full width row */}
+          <div className="hero-features-bar">
+            <div className="feature-pill-item">
+              <span className="feat-icon">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
+                </svg>
+              </span>
+              <span>100% Natural Stone</span>
             </div>
-            <div className="hero-photo-card card-main">
-              <img src="/s2.jpeg" alt="Calibrated Kadapa Stone" className="hero-photo-img" />
-              <div className="hero-sticker-note">
-                <div className="hero-sticker-text">
-                  നിങ്ങളുടെ സ്വപ്ന ഭവനത്തിന് പ്രകൃതി കല്ലുകൾ...
-                </div>
-              </div>
+            <div className="feat-divider" />
+            <div className="feature-pill-item">
+              <span className="feat-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <rect x="1" y="3" width="15" height="13"/>
+                  <polygon points="16 8 20 8 23 11 23 16 16 16 8"/>
+                  <circle cx="5.5" cy="18.5" r="2.5"/>
+                  <circle cx="18.5" cy="18.5" r="2.5"/>
+                </svg>
+              </span>
+              <span>Kerala Direct Supply</span>
+            </div>
+            <div className="feat-divider" />
+            <div className="feature-pill-item">
+              <span className="feat-icon">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+              </span>
+              <span>Safe &amp; Secure Transport</span>
+            </div>
+            <div className="feat-divider" />
+            <div className="feature-pill-item">
+              <span className="feat-icon">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/>
+                </svg>
+              </span>
+              <span>Best Price Guaranteed</span>
             </div>
           </div>
         </div>
@@ -431,7 +525,7 @@ export default function Home() {
                     <button 
                       type="button" 
                       className="btn-card-cart"
-                      onClick={(e) => handleAddToCart(stone, e)}
+                      onClick={(e) => handleAddToCart(stone, null, e)}
                       aria-label="Add to cart"
                     >
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -530,14 +624,32 @@ export default function Home() {
       {/* 6. Lorry Load Calculator & Instant Order */}
       <section className="calculator-section container" id="calculator-section">
         <div className="calculator-card">
-          {/* Left Column Form */}
+          {/* Left Column: Media thumbnail & copy */}
           <div className="calc-left-col">
-            <span className="calc-tag">GET INSTANT QUOTE</span>
-            <h3 className="calc-main-title">Lorry Load Calculator &amp; Instant Order</h3>
-            <p className="calc-malayalam-desc">
-              ചതുരശ്ര അടി, ഭാരം, നിരക്ക് എന്നിവ കണക്കാക്കി ഉടൻ ഓർഡർ ചെയ്യാം.
-            </p>
+            <div className="calc-media-card">
+              <img src="/s3.jpeg" alt="Kadapa heavy block slabs" className="calc-block-img" />
+              <div className="calc-leaves-icon">
+                <svg width="34" height="34" viewBox="0 0 24 24" fill="#34d399">
+                  <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/>
+                  <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/>
+                </svg>
+              </div>
+            </div>
 
+            <div className="calc-text-block">
+              <span className="calc-tag">GET INSTANT QUOTE</span>
+              <h3 className="calc-main-title">Lorry Load Calculator &amp; Instant Order</h3>
+              <p className="calc-malayalam-desc">
+                ലോറി ലോഡ് കാൽക്കുലേറ്റർ ഉപയോഗിച്ച് വിലയും ഭാരവും ഉടൻ കണക്കാക്കൂ.
+              </p>
+              <div className="best-supply-cursive">
+                <span>🌿</span> Kerala's Best Stone Supply
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column: Controls, live rate & WhatsApp CTA */}
+          <div className="calc-right-col">
             <div className="calc-form">
               <div className="calc-form-group">
                 <label className="calc-label" htmlFor="calcStoneSelect">Selected Variety</label>
@@ -549,7 +661,7 @@ export default function Home() {
                 >
                   {STONE_CATALOG.map((s) => (
                     <option key={s.code} value={s.code}>
-                      {s.sizeDisplay} - {s.thickness} - {s.finishBadge} {s.malayalamTitle} (₹{getStoneRate(s.code, selectedDistrictId)}/sqft)
+                      {s.sizeDisplay} - {s.thickness} - {s.finishBadge} (₹{getStoneRate(s.code, selectedDistrictId)}/sqft)
                     </option>
                   ))}
                 </select>
@@ -569,7 +681,7 @@ export default function Home() {
               </div>
 
               <div className="calc-form-group">
-                <label className="calc-label" htmlFor="calcDistrictSelect">Kerala Delivery District (Drives Selling Rate)</label>
+                <label className="calc-label" htmlFor="calcDistrictSelect">Kerala Delivery District</label>
                 <select 
                   id="calcDistrictSelect"
                   className="calc-select"
@@ -586,61 +698,18 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="calc-left-footer">
-              <div className="best-supply-cursive">
-                <span>🌿</span> Kerala's Best Stone Supply
-              </div>
-            </div>
-          </div>
-
-          {/* Right Summary Panel */}
-          <div className="calc-summary-panel">
-            <div>
-              <div className="calc-top-header">
-                <img src={selectedStone.image} alt={selectedStone.name} className="calc-stone-thumb" />
-                <div className="calc-price-wrap">
-                  <div className="calc-price-big">₹{Math.round(totalCost).toLocaleString()}</div>
-                  <div className="calc-price-sub">
-                    @ ₹{activeRate}/sqft ({selectedDistrictId}) &times; {selectedStone.sizeDisplay} &times; {selectedStone.thickness}
-                  </div>
-                </div>
-              </div>
-
-              <div className="calc-stats-grid">
-                <div className="stat-item">
-                  <span className="stat-title">Area</span>
-                  <span className="stat-number">{Math.round(safeSqft).toLocaleString()} sqft</span>
-                </div>
-                <div className="stat-item">
-                  <span className="stat-title">Slabs Count</span>
-                  <span className="stat-number">{slabs.toLocaleString()} pcs</span>
-                </div>
-                <div className="stat-item">
-                  <span className="stat-title">Est. Weight</span>
-                  <span className="stat-number">~{weightTons} Tons</span>
-                </div>
-              </div>
-
-              <div className="lorry-recommend-badge">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="#10b981" style={{ flexShrink: 0, marginTop: '2px' }}>
-                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                type="button" 
+                className="btn-add-cart-calc"
+                onClick={() => handleAddToCart(selectedStone, slabs)}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="8" cy="21" r="1"/>
+                  <circle cx="19" cy="21" r="1"/>
+                  <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>
                 </svg>
-                <div>
-                  <strong>Lorry Recommendation:</strong> {lorryText}
-                </div>
-              </div>
+                <span>+ Add to Cart ({slabs} pcs)</span>
+              </button>
             </div>
-
-            <button 
-              type="button" 
-              className="btn-place-wa-order"
-              onClick={() => handleWhatsAppOrder()}
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="#ffffff">
-                <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981z"/>
-              </svg>
-              <span>Place Order on WhatsApp</span>
-            </button>
           </div>
         </div>
       </section>
@@ -753,6 +822,17 @@ export default function Home() {
 
                 <button 
                   type="button" 
+                  className="btn-add-cart-calc"
+                  style={{ padding: '9px 14px', fontSize: '0.86rem' }}
+                  onClick={() => {
+                    handleAddToCart(modalStone, null);
+                    setModalStone(null);
+                  }}
+                >
+                  + Add to Cart
+                </button>
+                <button 
+                  type="button" 
                   className="btn-view-details"
                   style={{ background: '#e2e8f0', color: '#1e293b' }}
                   onClick={() => {
@@ -843,6 +923,237 @@ export default function Home() {
         </div>
       )}
 
+      
+      {/* Floating Cart Pill (Bottom Right) */}
+      {cart.length > 0 && (
+        <div 
+          className="floating-cart-pill"
+          onClick={() => setShowCartModal(true)}
+          title="Open Cart"
+        >
+          <div className="floating-cart-left">
+            <div className="floating-cart-icon-box">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                <circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/>
+                <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>
+              </svg>
+              <span className="floating-cart-count">{cart.length}</span>
+            </div>
+            <div>
+              <div className="floating-cart-title">{cartTotalPieces.toLocaleString()} Slabs &bull; {Math.round(cartTotalSqft).toLocaleString()} sqft</div>
+              <div className="floating-cart-sub">Est. ₹{Math.round(cartTotalCost).toLocaleString()} ({selectedDistrictId})</div>
+            </div>
+          </div>
+          <div className="floating-cart-action">
+            <span>View Cart</span>
+            <span className="floating-cart-arrow">&rarr;</span>
+          </div>
+        </div>
+      )}
+
+      {/* Cart Modal / Drawer */}
+      {showCartModal && (
+        <div className="modal-overlay" onClick={() => setShowCartModal(false)}>
+          <div className="modal-content cart-modal-content" onClick={(e) => e.stopPropagation()}>
+            {/* Header */}
+            <div className="cart-modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div className="cart-header-icon-box">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.2">
+                    <circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/>
+                    <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>
+                  </svg>
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>Your Consignment Cart</h3>
+                  <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                    {cart.length} stone {cart.length === 1 ? 'variety' : 'varieties'} selected
+                  </span>
+                </div>
+              </div>
+              <button 
+                type="button" 
+                className="modal-close-btn"
+                onClick={() => setShowCartModal(false)}
+                style={{ position: 'static' }}
+              >
+                &times;
+              </button>
+            </div>
+
+            {/* District selector bar inside cart */}
+            <div className="cart-district-bar">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#047857' }}>📍 Delivery District:</span>
+                <select 
+                  value={selectedDistrictId}
+                  onChange={(e) => setSelectedDistrictId(e.target.value)}
+                  className="cart-district-select"
+                >
+                  {KERALA_DISTRICTS.map((d) => (
+                    <option key={d.id} value={d.id}>{d.name}</option>
+                  ))}
+                </select>
+              </div>
+              <span style={{ fontSize: '0.74rem', color: '#64748b' }}>Rates auto-adjusted for site transit</span>
+            </div>
+
+            {/* Cart Items List */}
+            <div className="cart-items-body">
+              {cart.length === 0 ? (
+                <div className="cart-empty-state">
+                  <div className="cart-empty-icon">🛒</div>
+                  <h4>Your cart is empty</h4>
+                  <p>Select stone varieties from the catalog to build your consignment load.</p>
+                  <button 
+                    type="button" 
+                    className="btn-view-details" 
+                    style={{ background: '#10b981', color: '#ffffff', border: 'none', margin: '14px auto 0' }}
+                    onClick={() => {
+                      setShowCartModal(false);
+                      document.getElementById('catalog-section')?.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                  >
+                    Browse Stone Catalog
+                  </button>
+                </div>
+              ) : (
+                <div className="cart-items-list">
+                  {cart.map((item) => {
+                    const rate = getStoneRate(item.code, selectedDistrictId);
+                    const itemSqft = item.pieces * item.slabArea;
+                    const itemCost = itemSqft * rate;
+                    const itemWeight = ((itemSqft * item.weightPerSqftKg) / 1000).toFixed(1);
+
+                    return (
+                      <div key={item.code} className="cart-item-card">
+                        <img src={item.image} alt={item.name} className="cart-item-thumb" />
+                        <div className="cart-item-info">
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <div>
+                              <div className="cart-item-name">{item.name}</div>
+                              <div className="cart-item-badges">
+                                <span className="dim-pill" style={{ fontSize: '0.68rem', padding: '1px 6px', background: '#0f172a' }}>{item.sizeDisplay}</span>
+                                <span className="dim-pill" style={{ fontSize: '0.68rem', padding: '1px 6px', background: '#0f172a' }}>{item.thickness}</span>
+                                <span className="dim-pill" style={{ fontSize: '0.68rem', padding: '1px 6px', background: '#047857' }}>{item.finishBadge}</span>
+                              </div>
+                            </div>
+                            <button 
+                              type="button" 
+                              className="btn-remove-item"
+                              title="Remove stone"
+                              onClick={() => handleRemoveFromCart(item.code)}
+                            >
+                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2">
+                                <polyline points="3 6 5 6 21 6"/>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                              </svg>
+                            </button>
+                          </div>
+
+                          <div className="cart-item-controls-row">
+                            {/* Stepper */}
+                            <div className="cart-stepper-wrap">
+                              <button 
+                                type="button" 
+                                className="btn-stepper"
+                                onClick={() => handleUpdateCartQty(item.code, -25)}
+                                disabled={item.pieces <= 25}
+                              >
+                                &minus;
+                              </button>
+                              <input 
+                                type="number"
+                                className="cart-qty-input"
+                                value={item.pieces}
+                                min="25"
+                                step="25"
+                                onChange={(e) => handleSetCartPieces(item.code, e.target.value)}
+                              />
+                              <button 
+                                type="button" 
+                                className="btn-stepper"
+                                onClick={() => handleUpdateCartQty(item.code, 25)}
+                              >
+                                &#43;
+                              </button>
+                              <span style={{ fontSize: '0.74rem', color: '#64748b' }}>pcs</span>
+                            </div>
+
+                            {/* Area & Price */}
+                            <div style={{ textAlign: 'right' }}>
+                              <div className="cart-item-price">₹{Math.round(itemCost).toLocaleString()}</div>
+                              <div className="cart-item-rate">
+                                {itemSqft.toLocaleString()} sqft &bull; @ ₹{rate}/sqft (~{itemWeight}T)
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Cart Footer Summary & Place Order */}
+            {cart.length > 0 && (
+              <div className="cart-modal-footer">
+                {/* Summary stats */}
+                <div className="cart-summary-box">
+                  <div className="cart-summary-row">
+                    <span className="c-label">Total Slabs Count</span>
+                    <span className="c-val">{cartTotalPieces.toLocaleString()} pieces</span>
+                  </div>
+                  <div className="cart-summary-row">
+                    <span className="c-label">Total Consignment Area</span>
+                    <span className="c-val">{Math.round(cartTotalSqft).toLocaleString()} sq.ft</span>
+                  </div>
+                  <div className="cart-summary-row">
+                    <span className="c-label">Est. Total Weight</span>
+                    <span className="c-val">~{cartTotalWeightTons} Tons</span>
+                  </div>
+                  <div className="cart-summary-row" style={{ color: '#059669', fontWeight: 600 }}>
+                    <span className="c-label">Recommended Lorry</span>
+                    <span className="c-val" style={{ textAlign: 'right', fontSize: '0.78rem' }}>{cartLorryText}</span>
+                  </div>
+                  <div className="cart-summary-total-row">
+                    <span>Estimated Grand Total</span>
+                    <span className="cart-grand-total">₹{Math.round(cartTotalCost).toLocaleString()}</span>
+                  </div>
+                </div>
+
+                {/* Action buttons */}
+                <button 
+                  type="button" 
+                  className="btn-place-wa-order"
+                  style={{ width: '100%', padding: '13px 18px', fontSize: '1rem', borderRadius: 12 }}
+                  onClick={handleOrderCartWhatsApp}
+                >
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="#ffffff">
+                    <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981z"/>
+                  </svg>
+                  <span>Order Cart on WhatsApp</span>
+                </button>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 }}>
+                  <button 
+                    type="button" 
+                    className="btn-clear-cart"
+                    onClick={handleClearCart}
+                  >
+                    Clear Cart
+                  </button>
+                  <span style={{ fontSize: '0.74rem', color: '#64748b' }}>
+                    Direct dispatch hotline: {OWNER_PHONE_DISPLAY}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* 10. Mobile Bottom App Bar (iPhone 12 Pro Max & Mobile Screens) */}
       <nav className="mobile-bottom-nav" aria-label="Mobile Navigation">
         <button 
@@ -870,6 +1181,26 @@ export default function Home() {
             <rect x="3" y="14" width="7" height="7"/>
           </svg>
           <span>Catalog</span>
+        </button>
+
+        <button 
+          type="button" 
+          className="bottom-nav-item"
+          onClick={() => setShowCartModal(true)}
+          aria-label="Cart"
+          style={{ position: 'relative' }}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+            <circle cx="8" cy="21" r="1"/>
+            <circle cx="19" cy="21" r="1"/>
+            <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>
+          </svg>
+          {cart.length > 0 && (
+            <span style={{ position: 'absolute', top: -4, right: 14, background: '#10b981', color: '#ffffff', fontSize: '0.65rem', fontWeight: 800, width: 16, height: 16, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {cart.length}
+            </span>
+          )}
+          <span>Cart</span>
         </button>
 
         <button 
