@@ -698,18 +698,25 @@ Hello Transia Transport, I have created this consignment cart order on your cata
               </div>
             </div>
 
-                type="button" 
-                className="btn-add-cart-calc"
-                onClick={() => handleAddToCart(selectedStone, slabs)}
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="8" cy="21" r="1"/>
-                  <circle cx="19" cy="21" r="1"/>
-                  <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>
-                </svg>
-                <span>+ Add to Cart ({slabs} pcs)</span>
-              </button>
+            {/* Quick Live Cost & Weight Summary */}
+            <div className="calc-cost-pill">
+              <div className="calc-cost-val">₹{Math.round(totalCost).toLocaleString()}</div>
+              <div className="calc-cost-breakdown">
+                @ ₹{activeRate}/sqft ({selectedDistrictId}) &bull; {slabs.toLocaleString()} pcs &bull; ~{weightTons} Tons
+              </div>
             </div>
+
+            {/* WhatsApp Direct Order CTA */}
+            <button 
+              type="button" 
+              className="btn-place-wa-order"
+              onClick={() => handleWhatsAppOrder()}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="#ffffff">
+                <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981z"/>
+              </svg>
+              <span>Place Order on WhatsApp</span>
+            </button>
           </div>
         </div>
       </section>
