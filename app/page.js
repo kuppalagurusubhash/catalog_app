@@ -16,7 +16,7 @@ export default function Home() {
   const [sortBy, setSortBy] = useState('popular');
   const [selectedCode, setSelectedCode] = useState(STONE_CATALOG[0].code);
   const [sqft, setSqft] = useState(1800);
-  const [selectedDistrictId, setSelectedDistrictId] = useState('Palakkad');
+  const [selectedDistrictId, setSelectedDistrictId] = useState('Thrissur');
   
   // Interactive UI states
   const [cart, setCart] = useState([]);
@@ -46,7 +46,8 @@ export default function Home() {
 
   const handleAddToCart = (stone, customPieces = null, e = null) => {
     if (e && e.stopPropagation) e.stopPropagation();
-    const defaultPieces = customPieces || (stone.slabArea === 9 ? 100 : 200);
+    const isPiece = stone.pricingUnit === 'piece';
+    const defaultPieces = customPieces || (isPiece ? (stone.code === 'KB-CAB-44' ? 300 : 10) : (stone.slabArea >= 6 ? 100 : 200));
     setCart((prev) => {
       const idx = prev.findIndex((item) => item.code === stone.code);
       if (idx > -1) {
@@ -65,7 +66,9 @@ export default function Home() {
     setCart((prev) =>
       prev.map((item) => {
         if (item.code === code) {
-          const newPieces = Math.max(25, item.pieces + delta);
+          const step = Math.abs(delta);
+          const minQty = item.pricingUnit === 'piece' ? 1 : 25;
+          const newPieces = Math.max(minQty, item.pieces + delta);
           return { ...item, pieces: newPieces };
         }
         return item;
@@ -90,20 +93,29 @@ export default function Home() {
 
   // Cart aggregate totals
   const cartTotalPieces = cart.reduce((sum, item) => sum + item.pieces, 0);
-  const cartTotalSqft = cart.reduce((sum, item) => sum + (item.pieces * item.slabArea), 0);
-  const cartTotalWeightTons = (cart.reduce((sum, item) => sum + (item.pieces * item.slabArea * item.weightPerSqftKg), 0) / 1000).toFixed(1);
+  const cartTotalSqft = cart.reduce((sum, item) => {
+    return item.pricingUnit === 'piece'
+      ? sum + (item.pieces * (item.slabArea || 0.11))
+      : sum + (item.pieces * item.slabArea);
+  }, 0);
+  const cartTotalWeightTons = (cart.reduce((sum, item) => {
+    if (item.pricingUnit === 'piece') {
+      return sum + (item.pieces * (item.weightPerPieceKg || 1.4));
+    }
+    return sum + (item.pieces * item.slabArea * item.weightPerSqftKg);
+  }, 0) / 1000).toFixed(1);
   const cartTotalCost = cart.reduce((sum, item) => {
     const rate = getStoneRate(item.code, selectedDistrictId);
-    return sum + (item.pieces * item.slabArea * rate);
+    return item.pricingUnit === 'piece'
+      ? sum + (item.pieces * rate)
+      : sum + (item.pieces * item.slabArea * rate);
   }, 0);
 
-  let cartLorryText = '10-Wheeler Lorry (Direct site delivery via Walayar/AP)';
-  if (cartTotalWeightTons <= 11) {
-    cartLorryText = '6-Wheeler Lorry (~10T - For narrow/interior Kerala roads)';
-  } else if (cartTotalWeightTons <= 24) {
-    cartLorryText = '10-Wheeler Lorry (Direct site delivery via Walayar/AP)';
+  let cartLorryText = 'Dedicated 16-Wheeler Heavy Multi-Axle (~30-35T direct from 20+ vehicle fleet)';
+  if (cartTotalWeightTons <= 15) {
+    cartLorryText = '16-Wheeler Fleet Lorry (Express Consignment Direct to Site)';
   } else {
-    cartLorryText = '12-Wheeler Heavy Multi-Axle (~30-35T direct site dispatch)';
+    cartLorryText = 'Heavy 16-Wheeler Multi-Axle (~30-35T Full Quarry Load)';
   }
 
   const handleOrderCartWhatsApp = () => {
@@ -114,23 +126,26 @@ export default function Home() {
 
     const itemsLines = cart.map((item, idx) => {
       const rate = getStoneRate(item.code, selectedDistrictId);
-      const itemSqft = item.pieces * item.slabArea;
-      const itemCost = itemSqft * rate;
-      return `${idx + 1}. ORDER ${item.size} ${item.thickness} ${item.finish} ${item.pieces} pcs (${itemSqft.toLocaleString()} sq.ft) @ ₹${rate}/sqft = ₹${Math.round(itemCost).toLocaleString()}`;
+      const isPiece = item.pricingUnit === 'piece';
+      const itemSqft = Math.round(item.pieces * (item.slabArea || 0.11));
+      const itemCost = isPiece ? item.pieces * rate : item.pieces * item.slabArea * rate;
+      const unitRateStr = isPiece ? `₹${rate}/piece` : `₹${rate}/sqft`;
+      const qtyStr = isPiece ? `${item.pieces.toLocaleString()} pcs` : `${item.pieces.toLocaleString()} slabs (${itemSqft.toLocaleString()} sq.ft)`;
+      return `${idx + 1}. ORDER ${item.sizeDisplay} ${item.thickness} — ${qtyStr} @ ${unitRateStr} = ₹${Math.round(itemCost).toLocaleString()}`;
     }).join('\n');
 
     const msg =
 `*KADAPA BLACK STONE — CART CONSIGNMENT ORDER*
 ━━━━━━━━━━━━━━━━━━━━━
-📍 *Delivery District:* ${currentDistrictObj.name}
+📍 *Delivery District:* ${currentDistrictObj.name} (Direct Transfer Zone)
 
 📦 *Consignment Breakdown (${cart.length} Varieties):*
 ${itemsLines}
 
 ━━━━━━━━━━━━━━━━━━━━━
 📊 *Consignment Totals:*
-• Total Slabs: ${cartTotalPieces.toLocaleString()} pcs
-• Total Area: ${Math.round(cartTotalSqft).toLocaleString()} sq.ft
+• Total Items/Slabs: ${cartTotalPieces.toLocaleString()} pcs
+• Total Area: ~${Math.round(cartTotalSqft).toLocaleString()} sq.ft
 • Est. Consignment Weight: ~${cartTotalWeightTons} Tons
 • Recommended Vehicle: ${cartLorryText}
 💰 *Estimated Grand Total:* *₹${Math.round(cartTotalCost).toLocaleString()}*
@@ -145,21 +160,26 @@ Hello Transia Transport, I have created this consignment cart order on your cata
   const selectedStone = STONE_CATALOG.find((s) => s.code === selectedCode) || STONE_CATALOG[0];
   const activeRate = getStoneRate(selectedStone.code, selectedDistrictId);
   const safeSqft = Math.max(1, parseFloat(sqft) || 0);
-  const slabs = Math.ceil(safeSqft / selectedStone.slabArea);
+  const isPieceStone = selectedStone.pricingUnit === 'piece';
+  const slabs = isPieceStone ? Math.round(safeSqft) : Math.ceil(safeSqft / selectedStone.slabArea);
   const totalCost = safeSqft * activeRate;
-  const weightTons = ((safeSqft * selectedStone.weightPerSqftKg) / 1000).toFixed(1);
+  const weightTons = (
+    (safeSqft * (isPieceStone ? (selectedStone.weightPerPieceKg || 1.4) : selectedStone.weightPerSqftKg)) / 1000
+  ).toFixed(1);
 
-  let lorryText = '10-Wheeler Lorry (Direct site delivery via Walayar/AP)';
-  if (weightTons <= 11) {
-    lorryText = '6-Wheeler Lorry (~10T - For narrow/interior Kerala roads)';
-  } else if (weightTons <= 24) {
-    lorryText = '10-Wheeler Lorry (Direct site delivery via Walayar/AP)';
+  let lorryText = 'Heavy 16-Wheeler Multi-Axle (~30-35T Direct Site Delivery from 20+ Fleet)';
+  if (weightTons <= 15) {
+    lorryText = '16-Wheeler Fleet Lorry (Direct site transit via Walayar/AP)';
   } else {
-    lorryText = '12-Wheeler Heavy Multi-Axle (~30-35T direct site dispatch)';
+    lorryText = 'Heavy 16-Wheeler Multi-Axle (~30-35T Heavy Load Transit)';
   }
 
   const handleSelectStone = (code) => {
     setSelectedCode(code);
+    const s = STONE_CATALOG.find((item) => item.code === code);
+    if (s && s.pricingUnit === 'piece' && sqft > 1000) {
+      setSqft(s.code === 'KB-CAB-44' ? 300 : 10);
+    }
     const calcSection = document.getElementById('calculator-section');
     if (calcSection) {
       calcSection.scrollIntoView({ behavior: 'smooth' });
@@ -169,19 +189,25 @@ Hello Transia Transport, I have created this consignment cart order on your cata
   const handleWhatsAppOrder = (stoneObj = selectedStone, customSqft = safeSqft) => {
     const s = stoneObj;
     const rate = getStoneRate(s.code, selectedDistrictId);
-    const pieces = Math.ceil(customSqft / s.slabArea);
+    const isPiece = s.pricingUnit === 'piece';
+    const pieces = isPiece ? Math.round(customSqft) : Math.ceil(customSqft / s.slabArea);
     const total = customSqft * rate;
-    const weight = ((customSqft * s.weightPerSqftKg) / 1000).toFixed(1);
+    const weight = (
+      (customSqft * (isPiece ? (s.weightPerPieceKg || 1.4) : s.weightPerSqftKg)) / 1000
+    ).toFixed(1);
+
+    const unitStr = isPiece ? `₹${rate}/piece (Fixed Across Kerala)` : `₹${rate}/sq.ft`;
+    const qtyStr = isPiece ? `${Math.round(customSqft).toLocaleString()} pieces` : `${Math.round(customSqft).toLocaleString()} sq.ft (~${pieces} slabs)`;
 
     const msg = `*KADAPA BLACK STONE — KERALA DIRECT ORDER*\n` +
       `--------------------------------\n` +
       `🪨 *Stone Variety:* ${s.name} ${s.malayalamTitle}\n` +
       `📐 *Dimensions:* ${s.sizeDisplay} • ${s.thickness} (${s.finishBadge})\n` +
       `🏡 *Ideal Application:* ${s.keralaUse}\n` +
-      `📊 *Required Area:* ${Math.round(customSqft).toLocaleString()} sq.ft (~${pieces} slabs)\n` +
+      `📊 *Order Quantity:* ${qtyStr}\n` +
       `⚖️ *Estimated Weight:* ~${weight} Tons\n` +
       `📍 *Kerala Delivery District:* ${currentDistrictObj.name}\n` +
-      `💰 *District Selling Rate:* ₹${rate}/sq.ft\n` +
+      `💰 *District Selling Rate:* ${unitStr}\n` +
       `💵 *Estimated Total Cost:* ₹${Math.round(total).toLocaleString()}\n` +
       `🚚 *Lorry Recommendation:* ${lorryText}\n` +
       `--------------------------------\n` +
@@ -498,7 +524,7 @@ Hello Transia Transport, I have created this consignment cart order on your cata
 
                   <div className="price-row">
                     <span className="stone-price">₹{currentPrice}</span>
-                    <span className="stone-unit">/sq.ft</span>
+                    <span className="stone-unit">{stone.pricingUnit === 'piece' ? '/piece' : '/sq.ft'}</span>
                     {stone.isBestValue && (
                       <span className="best-value-pill">Best Value</span>
                     )}
@@ -576,47 +602,160 @@ Hello Transia Transport, I have created this consignment cart order on your cata
         </div>
       </section>
 
-      {/* 5. Trust Guarantee Bar */}
-      <section className="trust-bar-section container" id="trust-section">
-        <div className="trust-bar-container">
-          <div className="trust-item">
-            <div className="trust-icon-box">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/>
-              </svg>
+      {/* 5. Kerala Logistics Network & 16-Wheeler Fleet Heritage */}
+      <section className="kerala-network-section container" id="network-section">
+        <div className="network-main-card">
+          <div className="network-header-wrap">
+            <div>
+              <div className="network-badge">
+                <span>🚛</span> SINCE 2002 &bull; 24+ YEARS OF KERALA SUPPLY HERITAGE
+              </div>
+              <h2 className="network-title">
+                Kerala Direct Supply Network &amp; 16-Wheeler Fleet
+              </h2>
+              <div className="network-malayalam">
+                200-ലധികം സന്തുഷ്ടരായ ഉപഭോക്താക്കൾ &bull; 20+ ഹെവി 16-വീൽ ലോറികൾ &bull; നേരിട്ടുള്ള സൈറ്റ് ഡെലിവറി
+              </div>
             </div>
-            <span className="trust-text">Kerala's Trusted<br />Stone Supplier</span>
+
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <button 
+                type="button" 
+                className="btn-filter"
+                style={{ background: 'rgba(16, 185, 129, 0.2)', borderColor: '#10b981', color: '#34d399' }}
+                onClick={() => setShowRatesModal(true)}
+              >
+                <span>📍 View 7 Hub Rates</span>
+              </button>
+              <button 
+                type="button" 
+                className="btn-filter"
+                style={{ background: '#25d366', color: '#ffffff', borderColor: '#25d366', fontWeight: 700 }}
+                onClick={() => handleWhatsAppOrder()}
+              >
+                <span>💬 Contact Fleet Dispatch</span>
+              </button>
+            </div>
           </div>
 
-          <div className="trust-item">
-            <div className="trust-icon-box">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                <polyline points="9 12 11 14 15 10"/>
-              </svg>
+          {/* 4 Core Achievement Stat Badges */}
+          <div className="network-metrics-row">
+            <div className="network-metric-box">
+              <div className="metric-num">
+                <span>200+</span>
+                <span style={{ fontSize: '1rem', color: '#34d399' }}>Clients</span>
+              </div>
+              <div className="metric-label">Happy Kerala Customers</div>
+              <div className="metric-sub">Architects, contractors &amp; villa owners across Kerala</div>
             </div>
-            <span className="trust-text">On-Time Delivery<br />Across Kerala</span>
+
+            <div className="network-metric-box">
+              <div className="metric-num">
+                <span>2002</span>
+                <span style={{ fontSize: '1rem', color: '#fbbf24' }}>ESTD</span>
+              </div>
+              <div className="metric-label">24+ Years of Legacy</div>
+              <div className="metric-sub">Tons of high-grade stone supplied &amp; exported</div>
+            </div>
+
+            <div className="network-metric-box">
+              <div className="metric-num">
+                <span>20+</span>
+                <span style={{ fontSize: '1rem', color: '#38bdf8' }}>Vehicles</span>
+              </div>
+              <div className="metric-label">All 16-Wheeler Heavy Lorries</div>
+              <div className="metric-sub">Dedicated multi-axle fleet for non-stop safe transit</div>
+            </div>
+
+            <div className="network-metric-box">
+              <div className="metric-num">
+                <span>₹ Cr+</span>
+                <span style={{ fontSize: '1rem', color: '#a7f3d0' }}>Trade</span>
+              </div>
+              <div className="metric-label">Crores of Trusted Business</div>
+              <div className="metric-sub">Direct quarry transparent rates with zero middlemen</div>
+            </div>
           </div>
 
-          <div className="trust-item">
-            <div className="trust-icon-box">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                <circle cx="12" cy="12" r="10"/>
-                <path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/>
-                <path d="M12 18V6"/>
-              </svg>
+          {/* Dual Visual Showcase: Kerala Route Map + Real 16-Wheeler Convoy */}
+          <div className="network-visuals-grid">
+            {/* Visual 1: Kerala Delivery Map */}
+            <div className="visual-showcase-card">
+              <div className="visual-img-container">
+                <img 
+                  src="/kerala-districts-map.jpg" 
+                  alt="Kerala Logistics Transit Network connecting Thrissur, Palakkad, Malappuram, Kozhikode, Kannur, Kasaragod, Wayanad" 
+                  loading="lazy" 
+                />
+                <div className="visual-overlay-tag">
+                  <span>📍</span> 7 Authorized Transfer Hubs
+                </div>
+                <div className="visual-overlay-badge-rt">
+                  Highway Corridor
+                </div>
+              </div>
+              <div className="visual-card-body">
+                <div className="visual-card-title">
+                  <span>Kerala District Transit Network</span>
+                </div>
+                <div className="visual-card-desc">
+                  Exclusive direct transit into <strong>Thrissur, Palakkad, Malappuram, Kozhikode, Kannur, Kasaragod, and Wayanad</strong> via Walayar border and northern corridors.
+                </div>
+              </div>
             </div>
-            <span className="trust-text">Transparent<br />Quarry Rates</span>
+
+            {/* Visual 2: Real 16-Wheeler Fleet Photo */}
+            <div className="visual-showcase-card">
+              <div className="visual-img-container">
+                <img 
+                  src="/fleet-16-wheeler.jpg" 
+                  alt="Our authentic fleet of 20+ heavy 16-wheeler lorries loaded with Kadapa stone" 
+                  loading="lazy" 
+                />
+                <div className="visual-overlay-tag">
+                  <span>🚛</span> 20+ Owned 16-Wheelers
+                </div>
+                <div className="visual-overlay-badge-rt" style={{ background: '#b45309' }}>
+                  ~35T Heavy Load
+                </div>
+              </div>
+              <div className="visual-card-body">
+                <div className="visual-card-title">
+                  <span>Our 16-Wheeler Heavy Transport Convoy</span>
+                </div>
+                <div className="visual-card-desc">
+                  Fleet of 20+ owned 16-wheeler lorries continuously hauling heavy 30–35 Ton consignments direct from our Kadapa quarry to Kerala destinations.
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div className="trust-item">
-            <div className="trust-icon-box">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                <path d="M3 18v-6a9 9 0 0 1 18 0v6"/>
-                <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/>
-              </svg>
+          {/* 7 Hubs Quick Switch Bar */}
+          <div className="network-hubs-bar">
+            <div className="hubs-title-tag">
+              <span>📍 Quick Switch Hub:</span>
             </div>
-            <span className="trust-text">Dedicated<br />Customer Support</span>
+            <div className="hubs-pills-wrap">
+              {KERALA_DISTRICTS.map((d) => {
+                const isSelected = selectedDistrictId === d.id;
+                return (
+                  <button
+                    key={d.id}
+                    type="button"
+                    className={`hub-btn-pill ${isSelected ? 'active' : ''}`}
+                    onClick={() => {
+                      setSelectedDistrictId(d.id);
+                      showToast(`Selected delivery hub: ${d.name}`);
+                    }}
+                  >
+                    <span>{d.id}</span>
+                    <span className="hub-badge">
+                      {d.id === 'Thrissur' ? 'Base' : d.note.replace(' than Thrissur', '')}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       </section>
@@ -643,7 +782,7 @@ Hello Transia Transport, I have created this consignment cart order on your cata
                 ലോറി ലോഡ് കാൽക്കുലേറ്റർ ഉപയോഗിച്ച് വിലയും ഭാരവും ഉടൻ കണക്കാക്കൂ.
               </p>
               <div className="best-supply-cursive">
-                <span>🌿</span> Kerala's Best Stone Supply
+                <span>🌿</span> Kerala&apos;s Best Stone Supply
               </div>
             </div>
           </div>
@@ -661,27 +800,29 @@ Hello Transia Transport, I have created this consignment cart order on your cata
                 >
                   {STONE_CATALOG.map((s) => (
                     <option key={s.code} value={s.code}>
-                      {s.sizeDisplay} - {s.thickness} - {s.finishBadge} (₹{getStoneRate(s.code, selectedDistrictId)}/sqft)
+                      {s.sizeDisplay} - {s.thickness} - {s.name} (₹{getStoneRate(s.code, selectedDistrictId)}{s.pricingUnit === 'piece' ? '/pc' : '/sqft'})
                     </option>
                   ))}
                 </select>
               </div>
 
               <div className="calc-form-group">
-                <label className="calc-label" htmlFor="calcAreaInput">Required Area (Sq.Ft)</label>
+                <label className="calc-label" htmlFor="calcAreaInput">
+                  {selectedStone.pricingUnit === 'piece' ? 'Required Quantity (Pieces)' : 'Required Area (Sq.Ft)'}
+                </label>
                 <input 
                   type="number" 
                   id="calcAreaInput"
                   className="calc-input"
                   value={sqft}
                   onChange={(e) => setSqft(e.target.value)}
-                  min="50"
-                  step="50"
+                  min={selectedStone.pricingUnit === 'piece' ? "1" : "50"}
+                  step={selectedStone.pricingUnit === 'piece' ? "10" : "50"}
                 />
               </div>
 
               <div className="calc-form-group">
-                <label className="calc-label" htmlFor="calcDistrictSelect">Kerala Delivery District</label>
+                <label className="calc-label" htmlFor="calcDistrictSelect">Kerala Delivery District (7 Transfer Hubs Only)</label>
                 <select 
                   id="calcDistrictSelect"
                   className="calc-select"
@@ -702,7 +843,7 @@ Hello Transia Transport, I have created this consignment cart order on your cata
             <div className="calc-cost-pill">
               <div className="calc-cost-val">₹{Math.round(totalCost).toLocaleString()}</div>
               <div className="calc-cost-breakdown">
-                @ ₹{activeRate}/sqft ({selectedDistrictId}) &bull; {slabs.toLocaleString()} pcs &bull; ~{weightTons} Tons
+                @ ₹{activeRate}{selectedStone.pricingUnit === 'piece' ? '/piece' : '/sqft'} ({selectedDistrictId}) &bull; {slabs.toLocaleString()} {selectedStone.pricingUnit === 'piece' ? 'pcs' : 'slabs'} &bull; ~{weightTons} Tons
               </div>
             </div>
 
@@ -796,7 +937,9 @@ Hello Transia Transport, I have created this consignment cart order on your cata
                   <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#b45309' }}>
                     ₹{getStoneRate(modalStone.code, selectedDistrictId)}
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: '#64748b' }}>/sq.ft ({selectedDistrictId})</div>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                    {modalStone.pricingUnit === 'piece' ? '/piece' : '/sq.ft'} ({selectedDistrictId})
+                  </div>
                 </div>
               </div>
 
@@ -804,11 +947,13 @@ Hello Transia Transport, I have created this consignment cart order on your cata
                 <span className="dim-pill" style={{ background: '#0f172a' }}>{modalStone.sizeDisplay}</span>
                 <span className="dim-pill" style={{ background: '#0f172a' }}>{modalStone.thickness}</span>
                 <span className={`finish-pill ${modalStone.badgeVariant}`}>{modalStone.finishBadge}</span>
-                <span className="dim-pill" style={{ background: '#047857' }}>~{modalStone.weightPerSqftKg} kg/sqft</span>
+                <span className="dim-pill" style={{ background: '#047857' }}>
+                  {modalStone.pricingUnit === 'piece' ? `~${modalStone.weightPerPieceKg || 1.4} kg/pc` : `~${modalStone.weightPerSqftKg} kg/sqft`}
+                </span>
               </div>
 
               <p style={{ color: '#334155', fontSize: '0.88rem', lineHeight: 1.6, marginBottom: 20 }}>
-                <strong>Best Suited For:</strong> {modalStone.keralaUse}. Engineered for Kerala's wet tropical climate with high anti-slip durability, resistance to monsoon algae, and traditional natural texture.
+                <strong>Best Suited For:</strong> {modalStone.keralaUse}. Engineered for Kerala&apos;s wet tropical climate with high anti-slip durability, resistance to monsoon algae, and traditional natural texture.
               </p>
 
               <div style={{ display: 'flex', gap: 12 }}>
@@ -855,15 +1000,18 @@ Hello Transia Transport, I have created this consignment cart order on your cata
         </div>
       )}
 
-      {/* 9. District Rates Table Modal (Direct reproduction of screenshot) */}
+      {/* 9. District Rates Table Modal (Direct reproduction of notebook price chart) */}
       {showRatesModal && (
         <div className="modal-overlay" onClick={() => setShowRatesModal(false)}>
-          <div className="modal-content" style={{ maxWidth: 840, background: '#121214', color: '#f8fafc', padding: 24, borderRadius: 16 }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+          <div className="modal-content" style={{ maxWidth: 960, background: '#121214', color: '#f8fafc', padding: 24, borderRadius: 16 }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
               <div>
-                <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#ffffff' }}>District Rates</h3>
-                <p style={{ color: '#94a3b8', fontSize: '0.84rem', marginTop: 4 }}>
-                  Selling rate per sqft by Kerala district — drives buyer order pricing
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', fontSize: '0.72rem', fontWeight: 700, padding: '3px 10px', borderRadius: 999, marginBottom: 6 }}>
+                  <span>📍</span> 7 Authorized Kerala Delivery Hubs Only
+                </div>
+                <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#ffffff', margin: 0 }}>Official Delivery District Rates</h3>
+                <p style={{ color: '#94a3b8', fontSize: '0.82rem', marginTop: 4 }}>
+                  Direct quarry &amp; transport depot rates. Thrissur is base depot; Palakkad, Malappuram &amp; Calicut are -₹2; Kannur, Kasaragod &amp; Wayanad are -₹1.
                 </p>
               </div>
               <button 
@@ -876,48 +1024,54 @@ Hello Transia Transport, I have created this consignment cart order on your cata
               </button>
             </div>
 
-            <div style={{ overflowX: 'auto', marginBottom: 20 }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem' }}>
+            <div style={{ overflowX: 'auto', marginBottom: 18, border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.84rem', minWidth: 800 }}>
                 <thead>
-                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', color: '#94a3b8', textAlign: 'left', fontSize: '0.75rem', letterSpacing: '0.06em' }}>
-                    <th style={{ padding: '12px 14px' }}>STONE SPEC</th>
-                    <th style={{ padding: '12px 14px' }}>PALAKKAD</th>
-                    <th style={{ padding: '12px 14px' }}>WAYANAD</th>
-                    <th style={{ padding: '12px 14px' }}>KANNUR</th>
-                    <th style={{ padding: '12px 14px' }}>THRISSUR</th>
-                    <th style={{ padding: '12px 14px' }}>ERNAKULAM</th>
+                  <tr style={{ background: 'rgba(255,255,255,0.04)', borderBottom: '1px solid rgba(255,255,255,0.1)', color: '#94a3b8', textAlign: 'left', fontSize: '0.72rem', letterSpacing: '0.05em' }}>
+                    <th style={{ padding: '12px 12px' }}>STONE SPEC</th>
+                    <th style={{ padding: '12px 8px', textAlign: 'center' }}>UNIT</th>
+                    {KERALA_DISTRICTS.map((d) => (
+                      <th key={d.id} style={{ padding: '12px 10px', textAlign: 'center' }}>
+                        <div style={{ color: d.id === 'Thrissur' ? '#34d399' : '#f1f5f9', fontWeight: 700 }}>
+                          {d.id.toUpperCase()}
+                        </div>
+                        <div style={{ fontSize: '0.62rem', color: d.id === 'Thrissur' ? '#34d399' : '#94a3b8', fontWeight: 500 }}>
+                          {d.id === 'Thrissur' ? 'Base' : d.note.replace(' than Thrissur', '')}
+                        </div>
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {STONE_CATALOG.map((s) => (
-                    <tr key={s.code} style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                      <td style={{ padding: '14px', fontWeight: 700, color: '#f1f5f9' }}>
-                        {s.sizeDisplay}&nbsp;·&nbsp;{s.thickness}&nbsp;
-                        <span style={{ color: '#94a3b8', fontWeight: 400 }}>{s.finish}</span>
-                      </td>
-                      <td style={{ padding: '14px', color: '#fbbf24', fontWeight: 700 }}>
-                        <span style={{ color: '#64748b', fontSize: '0.75rem' }}>₹ </span>{DISTRICT_RATES['Palakkad'][s.code]}
-                      </td>
-                      <td style={{ padding: '14px', color: '#fbbf24', fontWeight: 700 }}>
-                        <span style={{ color: '#64748b', fontSize: '0.75rem' }}>₹ </span>{DISTRICT_RATES['Wayanad'][s.code]}
-                      </td>
-                      <td style={{ padding: '14px', color: '#fbbf24', fontWeight: 700 }}>
-                        <span style={{ color: '#64748b', fontSize: '0.75rem' }}>₹ </span>{DISTRICT_RATES['Kannur'][s.code]}
-                      </td>
-                      <td style={{ padding: '14px', color: '#fbbf24', fontWeight: 700 }}>
-                        <span style={{ color: '#64748b', fontSize: '0.75rem' }}>₹ </span>{DISTRICT_RATES['Thrissur'][s.code]}
-                      </td>
-                      <td style={{ padding: '14px', color: '#fbbf24', fontWeight: 700 }}>
-                        <span style={{ color: '#64748b', fontSize: '0.75rem' }}>₹ </span>{DISTRICT_RATES['Ernakulam'][s.code]}
-                      </td>
-                    </tr>
-                  ))}
+                  {STONE_CATALOG.map((s) => {
+                    const isPiece = s.pricingUnit === 'piece';
+                    return (
+                      <tr key={s.code} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                        <td style={{ padding: '12px', fontWeight: 700, color: '#f1f5f9' }}>
+                          <span style={{ color: '#38bdf8' }}>{s.sizeDisplay}</span>&nbsp;·&nbsp;{s.thickness}&nbsp;
+                          <div style={{ color: '#94a3b8', fontWeight: 400, fontSize: '0.75rem', marginTop: 2 }}>{s.name}</div>
+                        </td>
+                        <td style={{ padding: '12px 8px', textAlign: 'center', color: '#94a3b8', fontSize: '0.74rem' }}>
+                          {isPiece ? 'pc' : 'sq.ft'}
+                        </td>
+                        {KERALA_DISTRICTS.map((d) => {
+                          const rate = DISTRICT_RATES[d.id]?.[s.code] || 0;
+                          const isBase = d.id === 'Thrissur';
+                          return (
+                            <td key={d.id} style={{ padding: '12px 10px', textAlign: 'center', color: isBase ? '#34d399' : '#fbbf24', fontWeight: 700 }}>
+                              <span style={{ color: '#64748b', fontSize: '0.72rem' }}>₹ </span>{rate}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.78rem', color: '#64748b', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 14 }}>
-              <span>Example: 2x2 · 50mm polish sells at ₹40 in Palakkad, ₹48 in Wayanad, ₹50 in Kannur.</span>
+              <span>⚠️ Notice: Stone consignments are strictly dispatched only to these 7 Kerala locations.</span>
               <button 
                 type="button" 
                 style={{ background: '#10b981', color: '#ffffff', border: 'none', padding: '6px 16px', borderRadius: 8, fontWeight: 700, cursor: 'pointer' }}
@@ -1028,9 +1182,14 @@ Hello Transia Transport, I have created this consignment cart order on your cata
                 <div className="cart-items-list">
                   {cart.map((item) => {
                     const rate = getStoneRate(item.code, selectedDistrictId);
-                    const itemSqft = item.pieces * item.slabArea;
-                    const itemCost = itemSqft * rate;
-                    const itemWeight = ((itemSqft * item.weightPerSqftKg) / 1000).toFixed(1);
+                    const isPiece = item.pricingUnit === 'piece';
+                    const itemSqft = isPiece ? Math.round(item.pieces * (item.slabArea || 0.11)) : item.pieces * item.slabArea;
+                    const itemCost = isPiece ? item.pieces * rate : item.pieces * item.slabArea * rate;
+                    const itemWeight = isPiece 
+                      ? ((item.pieces * (item.weightPerPieceKg || 1.4)) / 1000).toFixed(1)
+                      : ((item.pieces * item.slabArea * item.weightPerSqftKg) / 1000).toFixed(1);
+                    const minQty = isPiece ? 1 : 25;
+                    const stepDelta = isPiece ? (item.code === 'KB-CAB-44' ? 50 : 1) : 25;
 
                     return (
                       <div key={item.code} className="cart-item-card">
@@ -1064,8 +1223,8 @@ Hello Transia Transport, I have created this consignment cart order on your cata
                               <button 
                                 type="button" 
                                 className="btn-stepper"
-                                onClick={() => handleUpdateCartQty(item.code, -25)}
-                                disabled={item.pieces <= 25}
+                                onClick={() => handleUpdateCartQty(item.code, -stepDelta)}
+                                disabled={item.pieces <= minQty}
                               >
                                 &minus;
                               </button>
@@ -1073,14 +1232,14 @@ Hello Transia Transport, I have created this consignment cart order on your cata
                                 type="number"
                                 className="cart-qty-input"
                                 value={item.pieces}
-                                min="25"
-                                step="25"
+                                min={minQty}
+                                step={stepDelta}
                                 onChange={(e) => handleSetCartPieces(item.code, e.target.value)}
                               />
                               <button 
                                 type="button" 
                                 className="btn-stepper"
-                                onClick={() => handleUpdateCartQty(item.code, 25)}
+                                onClick={() => handleUpdateCartQty(item.code, stepDelta)}
                               >
                                 &#43;
                               </button>
@@ -1091,7 +1250,7 @@ Hello Transia Transport, I have created this consignment cart order on your cata
                             <div style={{ textAlign: 'right' }}>
                               <div className="cart-item-price">₹{Math.round(itemCost).toLocaleString()}</div>
                               <div className="cart-item-rate">
-                                {itemSqft.toLocaleString()} sqft &bull; @ ₹{rate}/sqft (~{itemWeight}T)
+                                {isPiece ? `${item.pieces.toLocaleString()} pcs` : `${itemSqft.toLocaleString()} sqft`} &bull; @ ₹{rate}{isPiece ? '/piece' : '/sqft'} (~{itemWeight}T)
                               </div>
                             </div>
                           </div>
