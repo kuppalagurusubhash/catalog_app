@@ -16,9 +16,13 @@ const cinzel = Cinzel({
 });
 
 export const metadata = {
-  title: 'Kadapa Black Stone Catalog & Ordering Portal | Transport AI',
-  description: 'Authentic quarry-direct Kadapa natural black stone in 2x2 and 3x3 formats, 30mm/40mm/50mm thickness. Live truck load calculator and direct WhatsApp ordering.',
-  keywords: 'Kadapa black stone, natural stone paving, 2x2 stone rates, 3x3 stone slabs, rough cleft limestone, polished black stone, Transport AI',
+  title: 'KADAPA STONE TRANSPORT | Kerala Direct Supply & 16-Wheeler Transit',
+  description: 'Official Kadapa Stone Transport direct quarry supply to Kerala. 20+ heavy 16-wheeler fleet, 200+ clients across 7 delivery hubs since 2002.',
+  keywords: 'Kadapa black stone, Kadapa Stone Transport, Kerala stone supply, 2x2 stone rates, 16 wheeler lorry stone transit, natural limestone Kerala',
+  icons: {
+    icon: '/logo-icon.png',
+    apple: '/logo-icon.png',
+  },
 };
 
 export const viewport = {

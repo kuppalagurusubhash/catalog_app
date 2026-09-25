@@ -83,6 +83,28 @@ button, input, select {
   gap: 12px;
 }
 
+.site-brand-logo-img {
+  height: 54px;
+  width: auto;
+  max-width: 240px;
+  object-fit: contain;
+  display: block;
+  transition: transform 0.25s ease;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.4));
+}
+
+.site-brand-logo-img:hover {
+  transform: scale(1.03);
+}
+
+.site-brand-logo-footer {
+  height: 48px;
+  width: auto;
+  max-width: 220px;
+  object-fit: contain;
+  display: block;
+}
+
 .brand-icon-leaf {
   width: 40px;
   height: 40px;

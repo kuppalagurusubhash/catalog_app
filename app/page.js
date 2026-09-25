@@ -243,16 +243,13 @@ Hello Transia Transport, I have created this consignment cart order on your cata
         <div className="container header-container">
           {/* Brand Logo */}
           <div className="brand-identity">
-            <div className="brand-icon-leaf">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/>
-                <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/>
-              </svg>
-            </div>
-            <div className="brand-text-wrap">
-              <span className="brand-title">KADAPA BLACK STONE</span>
-              <span className="brand-subtitle">KERALA DIRECT SUPPLY &amp; TRANSPORT</span>
-            </div>
+            <a href="#" style={{ display: 'flex', alignItems: 'center' }}>
+              <img 
+                src="/logo-dark.png" 
+                alt="KADAPA STONE TRANSPORT" 
+                className="site-brand-logo-img" 
+              />
+            </a>
           </div>
 
           {/* Nav Links */}
@@ -868,16 +865,13 @@ Hello Transia Transport, I have created this consignment cart order on your cata
           <div className="footer-top-row">
             {/* Brand */}
             <div className="brand-identity">
-              <div className="brand-icon-leaf">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/>
-                  <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/>
-                </svg>
-              </div>
-              <div className="brand-text-wrap">
-                <span className="brand-title" style={{ fontSize: '1rem' }}>KADAPA BLACK STONE</span>
-                <span className="brand-subtitle" style={{ fontSize: '0.6rem' }}>KERALA DIRECT SUPPLY &amp; TRANSPORT</span>
-              </div>
+              <a href="#" style={{ display: 'flex', alignItems: 'center' }}>
+                <img 
+                  src="/logo-dark.png" 
+                  alt="KADAPA STONE TRANSPORT" 
+                  className="site-brand-logo-footer" 
+                />
+              </a>
             </div>
 
             {/* Links */}
